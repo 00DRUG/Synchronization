@@ -9,6 +9,18 @@ namespace Synchronization
         Error,
         Debug
     }
+    public enum OperationType
+    {
+        Add,
+        Update,
+        Delete,
+        SyncStart,
+        SyncEnd,
+        Info,
+        Warning,
+        Error,
+        Debug
+    }
 
     public class Logger : IDisposable
     {
@@ -64,7 +76,7 @@ namespace Synchronization
             {
                 try
                 {
-                    var logMessage = _logQueue.Take(); // Blocks until an item is available
+                    var logMessage = _logQueue.Take(); 
 
                     _streamWriter.WriteLine(logMessage);
                     _streamWriter.Flush();
@@ -107,6 +119,20 @@ namespace Synchronization
         }
 
         // specific log levels
+        public void LogAdd(string filePath, string message) =>
+       Log(new LogMessage(message, LogLevel.Info, OperationType.Add));
+
+        public void LogUpdate(string filePath, string message) =>
+            Log(new LogMessage(message, LogLevel.Info, OperationType.Update));
+
+        public void LogDelete(string filePath, string message) =>
+            Log(new LogMessage(message, LogLevel.Info, OperationType.Delete));
+
+        public void LogSyncStart(string message) =>
+            Log(new LogMessage(message, LogLevel.Info, OperationType.SyncStart));
+
+        public void LogSyncEnd(string message) =>
+            Log(new LogMessage(message, LogLevel.Info, OperationType.SyncEnd));
         public void Info(string message) => Log(new LogMessage(message, LogLevel.Info));
         public void Warning(string message) => Log(new LogMessage(message, LogLevel.Warning));
         public void Error(string message) => Log(new LogMessage(message, LogLevel.Error));
@@ -117,17 +143,20 @@ namespace Synchronization
         public DateTime Timestamp { get; }
         public string Message { get; }
         public LogLevel Level { get; }
-
-        public LogMessage(string message, LogLevel level)
+        public OperationType Operation { get; }
+ 
+        public LogMessage(string message, LogLevel level,OperationType operation = OperationType.Info)
         {
             Timestamp = DateTime.Now;
             Message = message;
             Level = level;
+            Operation = operation;
         }
 
         public override string ToString()
         {
-            return $"{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level}] {Message}";
+            string operationInfo = Operation != OperationType.Info ? $"[{Operation}] " : "";
+            return $"{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level}]{operationInfo} {Message}";
         }
     }
 }

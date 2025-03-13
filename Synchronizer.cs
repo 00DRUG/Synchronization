@@ -36,6 +36,7 @@ namespace Synchronization
 
         public async Task StartAsync()
         {
+            _logger.LogSyncStart("Starting synchronization.");
             try
             {
                 while (!_cancellationToken.Token.IsCancellationRequested)
@@ -52,14 +53,16 @@ namespace Synchronization
             {
                 _logger.Error($"Unexpected error during synchronization: {ex.Message}");
             }
+            finally
+            {
+                _logger.LogSyncEnd("Synchronization completed.");
+            }
         }
 
         private async Task SyncDirectoriesAsync()
         {
             try
             {
-                _logger.Info("Starting synchronization...");
-
                 DirectoryInfo sourceDirectory = new(sourcePath);
                 DirectoryInfo targetDirectory = new(targetPath);
 
@@ -79,8 +82,6 @@ namespace Synchronization
                 Task syncTask = SyncFilesAndDirectoriesAsync(sourceDirectory);
                 Task cleanTask = CleanDirectoryAsync(targetDirectory);
                 await Task.WhenAll(syncTask, cleanTask);
-
-                _logger.Info("Synchronization completed successfully.");
             }
             catch (Exception ex)
             {
@@ -112,7 +113,7 @@ namespace Synchronization
                 if (!Directory.Exists(targetDirPath))
                 {
                     Directory.CreateDirectory(targetDirPath);
-                    _logger.Info($"Created directory: {targetDirPath}");
+                    _logger.LogAdd(targetDirPath, $"Directory created: '{targetDirPath}' (source directory: '{dir.FullName}')");
                 }
             }
         }
@@ -126,6 +127,11 @@ namespace Synchronization
             {
                 if (await ShouldCopyFileAsync(sourceFile, targetFile))
                 {
+                    if (!targetFile.Exists)
+                    {
+                        _logger.LogAdd(targetFilePath, $"File {sourceFile.Name} added from '{sourceFile.FullName}' to '{targetFilePath}'");
+                    }
+                    else _logger.LogUpdate(targetFilePath, $"File updated from '{sourceFile.FullName}' to '{targetFilePath}'");
                     await CopyFileAsync(sourceFile.FullName, targetFilePath);
                 }
             }
@@ -168,7 +174,6 @@ namespace Synchronization
                     using FileStream sourceStream = new(source, FileMode.Open, FileAccess.Read, FileShare.Read);
                     using FileStream targetStream = new(target, FileMode.Create, FileAccess.Write, FileShare.None);
                     await sourceStream.CopyToAsync(targetStream);
-                    _logger.Info($"Copied file '{source}' to '{target}'.");
                     return;
                 }
                 catch (IOException ex) when (attempt < MaxRetryAttempts - 1)
@@ -198,8 +203,8 @@ namespace Synchronization
                     string sourceDirPath = dir.FullName.Replace(targetPath, sourcePath);
                     if (!Directory.Exists(sourceDirPath))
                     {
+                        _logger.LogDelete(dir.FullName, $"Directory deleted: '{dir.FullName}' (source directory '{sourceDirPath}' does not exist)");
                         await Task.Run(() => dir.Delete(true));
-                        _logger.Info($"Deleted directory: {dir.FullName}");
                     }
                 }
                 catch (Exception ex)
@@ -217,7 +222,7 @@ namespace Synchronization
                 if (!File.Exists(sourceFilePath))
                 {
                     await Task.Run(() => targetFile.Delete());
-                    _logger.Info($"Deleted file: {targetFile.FullName}");
+                    _logger.LogDelete(targetFile.FullName, $"File deleted: '{targetFile.FullName}' (source file '{sourceFilePath}' does not exist)");
                 }
             }
             catch (Exception ex)
