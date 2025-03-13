@@ -5,13 +5,15 @@ namespace Synchronization
 {
 
 
-    public class Logger
+    public class Logger: IDisposable
     {
         private readonly string _logFilePath;
         private readonly BlockingCollection<LogMessage> _logQueue;
         private readonly Thread _loggingThread;
         private readonly StreamWriter _streamWriter;
         private bool _isRunning;
+        private bool _isDisposed;
+
 
         public enum LogLevel
         {
@@ -53,18 +55,33 @@ namespace Synchronization
                 }
             }
         }
+        //Dispose resources
+        public void Dispose()
+        {
+            if (_isDisposed)
+            {
+                return;
+            }
+            _isDisposed = true;
+            StopLogging();
+            _streamWriter.Close();
+            _streamWriter.Dispose();
 
-        public void StopLogging()
+
+            _logQueue.Dispose();
+        }
+        private void StopLogging()
         {
             _isRunning = false;
             _logQueue.CompleteAdding(); 
             _loggingThread.Join();
-            _streamWriter.Close();
         }
 
         // Log methods
         public void Log(LogMessage logMessage)
         {
+            if (_isDisposed) throw new ObjectDisposedException(nameof(Logger));
+
             _logQueue.Add(logMessage); 
         }
 
