@@ -31,7 +31,17 @@ namespace Synchronization
             if (string.IsNullOrEmpty(_logFilePath))
                 throw new ArgumentException("Log file path cannot be null or empty");
 
-            Directory.CreateDirectory(Path.GetDirectoryName(_logFilePath));
+            var directoryPath = Path.GetDirectoryName(_logFilePath);
+            if (directoryPath != null && !Directory.Exists(directoryPath))
+            {
+                Directory.CreateDirectory(directoryPath);
+            }
+
+            // Ensure the log file exists
+            if (!File.Exists(_logFilePath))
+            {
+                using (File.Create(_logFilePath)) { }
+            }
         }
 
         // Start logging by initializing the StreamWriter and starting the logging thread
