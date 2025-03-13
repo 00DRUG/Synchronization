@@ -1,90 +1,102 @@
 ﻿using System.Collections.Concurrent;
-using static Synchronization.Logger;
 
 namespace Synchronization
 {
+    public enum LogLevel
+    {
+        Info,
+        Warning,
+        Error,
+        Debug
+    }
 
-
-    public class Logger: IDisposable
+    public class Logger : IDisposable
     {
         private readonly string _logFilePath;
         private readonly BlockingCollection<LogMessage> _logQueue;
-        private readonly Thread _loggingThread;
-        private readonly StreamWriter _streamWriter;
+        private StreamWriter _streamWriter;
+        private Thread _loggingThread;
         private bool _isRunning;
         private bool _isDisposed;
 
-
-        public enum LogLevel
-        {
-            Info,
-            Warning,
-            Error,
-            Debug
-        }
-
+        // Constructor
         public Logger(string logFilePath = "log.txt")
         {
             _logFilePath = logFilePath;
             _logQueue = new BlockingCollection<LogMessage>(new ConcurrentQueue<LogMessage>());
+            _isRunning = false;
+            _isDisposed = false;
+
+            // Ensure the directory exists before starting logging
+            if (string.IsNullOrEmpty(_logFilePath))
+                throw new ArgumentException("Log file path cannot be null or empty");
+
+            Directory.CreateDirectory(Path.GetDirectoryName(_logFilePath));
+        }
+
+        // Start logging by initializing the StreamWriter and starting the logging thread
+        public void StartLogging()
+        {
+            if (_isDisposed) throw new ObjectDisposedException(nameof(Logger));
+
             _streamWriter = new StreamWriter(_logFilePath, append: true);
             _isRunning = true;
 
-            // Start a background thread to process the log queue
+            // Start the background thread for processing log messages
             _loggingThread = new Thread(BackgroundLogProcessing);
             _loggingThread.Start();
         }
 
+        // Background thread to process the log queue and write logs
         private void BackgroundLogProcessing()
         {
             while (_isRunning)
             {
                 try
                 {
-                    var logMessage = _logQueue.Take(); 
+                    var logMessage = _logQueue.Take(); // Blocks until an item is available
 
-                    _streamWriter.WriteLine(logMessage.ToString());
+                    _streamWriter.WriteLine(logMessage);
                     _streamWriter.Flush();
-
-                    Console.WriteLine(logMessage.ToString());// Print to console, can remove 
                 }
                 catch (InvalidOperationException)
                 {
-                    // BlockingCollection was marked complete for adding new items
+                    // The BlockingCollection was marked complete for adding new items
                     break;
                 }
             }
         }
-        //Dispose resources
+
+        // Dispose resources
         public void Dispose()
         {
-            if (_isDisposed)
-            {
-                return;
-            }
+            if (_isDisposed) return;
+
             _isDisposed = true;
             StopLogging();
-            _streamWriter.Close();
-            _streamWriter.Dispose();
-
-
+            _streamWriter?.Dispose();
             _logQueue.Dispose();
         }
-        private void StopLogging()
+
+        // Stop logging and close resources
+        public void StopLogging()
         {
-            _isRunning = false;
-            _logQueue.CompleteAdding(); 
-            _loggingThread.Join();
+            if (_isRunning)
+            {
+                _isRunning = false;
+                _logQueue.CompleteAdding();
+                _loggingThread?.Join(); 
+            }
         }
 
-        // Log methods
+        // Method to add a log message to the queue
         public void Log(LogMessage logMessage)
         {
             if (_isDisposed) throw new ObjectDisposedException(nameof(Logger));
-
-            _logQueue.Add(logMessage); 
+            _logQueue.Add(logMessage);
         }
 
+        // specific log levels
         public void Info(string message) => Log(new LogMessage(message, LogLevel.Info));
         public void Warning(string message) => Log(new LogMessage(message, LogLevel.Warning));
         public void Error(string message) => Log(new LogMessage(message, LogLevel.Error));
@@ -108,6 +120,4 @@ namespace Synchronization
             return $"{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level}] {Message}";
         }
     }
-
-
 }
