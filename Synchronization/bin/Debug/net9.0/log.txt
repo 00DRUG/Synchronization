@@ -1,0 +1,4 @@
+2025-03-13 23:22:41 [Info] Starting synchronization with a delay of 10000ms.
+2025-03-13 23:22:41 [Info][SyncStart]  Starting synchronization.
+2025-03-13 23:22:51 [Info][Delete]  File deleted: 'C:\Users\gurie\Source\Repos\Synchronization\bin\Debug\net9.0\target\New Text Document.txt' (source file 'C:\Users\gurie\Source\Repos\Synchronization\bin\Debug\net9.0\source\New Text Document.txt' does not exist)
+2025-03-13 23:23:01 [Info][Add]  File C:\Users\gurie\Source\Repos\Synchronization\bin\Debug\net9.0\source\New Text Document.txt added from 'C:\Users\gurie\Source\Repos\Synchronization\bin\Debug\net9.0\source\New Text Document.txt' to 'C:\Users\gurie\Source\Repos\Synchronization\bin\Debug\net9.0\target\New Text Document.txt'
