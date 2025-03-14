@@ -1,7 +1,6 @@
 ﻿using System.Collections.Concurrent;
 
-namespace Synchronization
-{
+namespace Synchronization;
     public enum LogLevel
     {
         Info,
@@ -31,7 +30,6 @@ namespace Synchronization
         private bool _isRunning;
         private bool _isDisposed;
 
-        // Constructor
         public Logger(string logFilePath = "log.txt")
         {
             _logFilePath = logFilePath;
@@ -60,7 +58,6 @@ namespace Synchronization
         public void StartLogging()
         {
             if (_isDisposed) throw new ObjectDisposedException(nameof(Logger));
-
             _streamWriter = new StreamWriter(_logFilePath, append: true);
             _isRunning = true;
 
@@ -136,7 +133,6 @@ namespace Synchronization
         public void Info(string message) => Log(new LogMessage(message, LogLevel.Info));
         public void Warning(string message) => Log(new LogMessage(message, LogLevel.Warning));
         public void Error(string message) => Log(new LogMessage(message, LogLevel.Error));
-        public void Debug(string message) => Log(new LogMessage(message, LogLevel.Debug));
     }
     public class LogMessage
     {
@@ -152,11 +148,4 @@ namespace Synchronization
             Level = level;
             Operation = operation;
         }
-
-        public override string ToString()
-        {
-            string operationInfo = Operation != OperationType.Info ? $"[{Operation}] " : "";
-            return $"{Timestamp:yyyy-MM-dd HH:mm:ss} [{Level}]{operationInfo} {Message}";
-        }
     }
-}

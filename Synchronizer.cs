@@ -1,13 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Threading;
-using System.Threading.Tasks;
-
-namespace Synchronization
-{
+﻿using System.Security.Cryptography;
+namespace Synchronization;
     public enum ComparisonMethod
     {
         MD5,
@@ -21,16 +13,12 @@ namespace Synchronization
         private const int MaxRetryAttempts = 5;
         private const int RetryDelayMilliseconds = 1000;
         private readonly int syncDelay = syncDelay > 0 ? syncDelay : throw new ArgumentException("Sync delay must be greater than 0.", nameof(syncDelay));
-
         private readonly string sourcePath= EnsureTrailingSlash(Path.GetFullPath(sourcePath));
         private readonly string targetPath = EnsureTrailingSlash(Path.GetFullPath(targetPath));
         private readonly Logger _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         private readonly ComparisonMethod _comparisonMethod = comparisonMethod;
         private readonly CancellationTokenSource _cancellationToken = cancellationToken;
 
-
-
-        // Ensures a path has a trailing slash
         private static string EnsureTrailingSlash(string path) =>
             path.EndsWith(Path.DirectorySeparatorChar.ToString()) ? path : path + Path.DirectorySeparatorChar;
 
@@ -101,7 +89,7 @@ namespace Synchronization
             await Task.WhenAll(fileTasks);
         }
 
-        private async Task SyncDirectoriesAsync(DirectoryInfo sourceDirectory)
+        private Task SyncDirectoriesAsync(DirectoryInfo sourceDirectory)
         {
             IOrderedEnumerable<DirectoryInfo> directories = sourceDirectory
                 .GetDirectories("*", SearchOption.AllDirectories)
@@ -116,6 +104,8 @@ namespace Synchronization
                     _logger.LogAdd(targetDirPath, $"Directory created: '{targetDirPath}' (source directory: '{dir.FullName}')");
                 }
             }
+
+            return Task.CompletedTask;
         }
 
         private async Task ProcessFileAsync(FileInfo sourceFile)
@@ -127,10 +117,7 @@ namespace Synchronization
             {
                 if (await ShouldCopyFileAsync(sourceFile, targetFile))
                 {
-                    if (!targetFile.Exists)
-                    {
-                        _logger.LogAdd(targetFilePath, $"File {sourceFile.Name} added from '{sourceFile.FullName}' to '{targetFilePath}'");
-                    }
+                    if (!targetFile.Exists) _logger.LogAdd(targetFilePath, $"File {sourceFile.Name} added from '{sourceFile.FullName}' to '{targetFilePath}'");
                     else _logger.LogUpdate(targetFilePath, $"File updated from '{sourceFile.FullName}' to '{targetFilePath}'");
                     await CopyFileAsync(sourceFile.FullName, targetFilePath);
                 }
@@ -262,7 +249,7 @@ namespace Synchronization
             byte[] hash2 = await sha256.ComputeHashAsync(stream2);
             return hash1.SequenceEqual(hash2);
         }
-        private async Task<bool> CompareFilesBinaryAsync(string filePath1, string filePath2)
+        public async Task<bool> CompareFilesBinaryAsync(string filePath1, string filePath2)
         {
             const int bufferSize = 1024*1024; // 1 mb buffer size for efficient reading
 
@@ -314,4 +301,3 @@ namespace Synchronization
             _cancellationToken.Cancel();
         }
     }
-}
