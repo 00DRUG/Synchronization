@@ -1,5 +1,5 @@
 ﻿
-
+using Synchronization.Models;
 namespace Synchronization.Interfaces;
 
 public interface ISynchronizer
