@@ -15,4 +15,8 @@ public class LogMessage
         Level = level;
         Operation = operation;
     }
+    public override string ToString()
+    {
+        return $"[{Timestamp:yyyy-MM-dd HH:mm:ss}] [{Level}] [{Operation}] {Message}";
+    }
 }

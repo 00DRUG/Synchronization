@@ -16,19 +16,17 @@ public class Logger : ILogger, IDisposable
 
     public Logger(string logFilePath = "log.txt")
     {
-        // Ensure the directory exists before starting logging
-        if (string.IsNullOrEmpty(_logFilePath))
-            throw new ArgumentException("Log file path cannot be null or empty");
-
+        if (!File.Exists(logFilePath))
+        {
+            using (File.Create(logFilePath)) { }
+        }
         _logFilePath = logFilePath;
         _logQueue = new BlockingCollection<LogMessage>(new ConcurrentQueue<LogMessage>());
+        _streamWriter = new StreamWriter(new FileStream(_logFilePath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite));
         _isRunning = false;
         _isDisposed = false;
 
-        if (!File.Exists(_logFilePath))
-        {
-            using (File.Create(_logFilePath)) { }
-        }
+
         StartLogging();
     }
     public void Log(LogMessage logMessage)
@@ -58,20 +56,20 @@ public class Logger : ILogger, IDisposable
     // Background thread to process the log queue and write logs
     private void BackgroundLogProcessing()
     {
-        using (var _streamWriter = new StreamWriter(_logFilePath, append: true))
-            foreach (var logMessage in _logQueue.GetConsumingEnumerable())
-            {
-                _streamWriter.WriteLine(logMessage);
-                _streamWriter.Flush();
-            }
+        foreach (var logMessage in _logQueue.GetConsumingEnumerable())
+        {
+            _streamWriter.WriteLine(logMessage.ToString());
+            _streamWriter.Flush();
+            Console.WriteLine(logMessage.ToString());// for the console output same as to the log file
+        }
     }
 
     // Dispose resources
     public void Dispose()
     {
         if (_isDisposed) return;
-
         _isDisposed = true;
+
         StopLogging();
         _streamWriter.Dispose();
         _logQueue.Dispose();
