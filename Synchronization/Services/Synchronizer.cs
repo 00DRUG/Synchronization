@@ -1,4 +1,5 @@
 ﻿using Synchronization.Enums;
+using Synchronization.Extensions;
 using Synchronization.Interfaces;
 using Synchronization.Models;
 using Synchronization.Utils;
@@ -10,23 +11,23 @@ public class FileSynchronizer : ISynchronizer
     private readonly ILogger _logger;
     private const int MaxRetryAttempts = 10;
     private const int RetryDelayMilliseconds = 1000;
-    private InputParameters _inputPrameters;
+    private InputParameters _inputParameters;
 
     public FileSynchronizer(ILogger logger)
     {
         _logger = logger;
-        _inputPrameters = new InputParameters();
+        _inputParameters = new InputParameters();
     }
-    public async Task StartAsync(InputParameters input, CancellationToken cancellationToken)
+    public async Task StartAsync(InputParameters input, CancellationTokenSource cancellationToken)
     {
-        _inpuParameters = input;
+        _inputParameters = input;
         _logger.LogSyncStart("Starting synchronization.");
         try
         {
             var context = new FilesContext(input.SourceDirectory, input.TargetDirectory);
             while (!cancellationToken.Token.IsCancellationRequested)
             {
-                await SyncDirectoriesAsync();
+                await SyncDirectoriesAsync(context, cancellationToken.Token);
                 await Task.Delay(input.SyncDelay, cancellationToken.Token);
             }
         }
@@ -44,29 +45,24 @@ public class FileSynchronizer : ISynchronizer
         }
     }
 
-    private async Task SyncDirectoriesAsync()
+    private async Task SyncDirectoriesAsync(FilesContext context, CancellationToken cancellationToken)
     {
         try
         {
-            DirectoryInfo sourceDirectory = new(sourcePath);
-            DirectoryInfo targetDirectory = new(targetPath);
-
-            if (!sourceDirectory.Exists)
+            if (!context.SourceDirectory.Exists)
             {
-                _logger.Error($"Source directory '{sourcePath}' does not exist.");
+                _logger.Error($"Source directory '{context.SourceDirectory.FullName}' does not exist.");
                 return;
             }
 
-            if (!targetDirectory.Exists)
+            if (!context.TargetDirectory.Exists)
             {
-                _logger.Warning($"Target directory '{targetPath}' does not exist. Creating...");
-                targetDirectory.Create();
+                _logger.Warning($"Target directory '{context.TargetDirectory.FullName}' does not exist. Creating...");
+                context.TargetDirectory.Create();
             }
 
-            // Perform sync operations concurrently
-            Task syncTask = SyncFilesAndDirectoriesAsync(sourceDirectory);
-            Task cleanTask = CleanDirectoryAsync(targetDirectory);
-            await Task.WhenAll(syncTask, cleanTask);
+            await SyncFilesAndDirectoriesAsync(context, cancellationToken);
+            await CleanDirectory(context.TargetDirectory, context.SourcePath, context.TargetPath);
         }
         catch (Exception ex)
         {
@@ -74,19 +70,16 @@ public class FileSynchronizer : ISynchronizer
         }
     }
 
-    private async Task SyncFilesAndDirectoriesAsync(DirectoryInfo sourceDirectory)
+    private async Task SyncFilesAndDirectoriesAsync(FilesContext context, CancellationToken cancellationToken)
     {
-        // Ensure all directories exist in the target
-        await SyncDirectoriesAsync(sourceDirectory);
-
-        // Sync files asynchronously
-        IEnumerable<FileInfo> files = sourceDirectory.GetFiles("*", SearchOption.AllDirectories);
-        IEnumerable<Task> fileTasks = files.Select(file => ProcessFileAsync(file));
+        await SyncDirectoriesAsync(context.SourceDirectory, context.SourcePath, context.TargetPath);
+        var files = context.SourceDirectory.GetFiles("*", SearchOption.AllDirectories);
+        var fileTasks = files.Select(file => ProcessFileAsync(file, context.SourcePath, context.TargetPath, cancellationToken));
 
         await Task.WhenAll(fileTasks);
     }
 
-    private Task SyncDirectoriesAsync(DirectoryInfo sourceDirectory)
+    private Task SyncDirectoriesAsync(DirectoryInfo sourceDirectory, string sourcePath, string targetPath)
     {
         IOrderedEnumerable<DirectoryInfo> directories = sourceDirectory
             .GetDirectories("*", SearchOption.AllDirectories)
@@ -98,25 +91,32 @@ public class FileSynchronizer : ISynchronizer
             if (!Directory.Exists(targetDirPath))
             {
                 Directory.CreateDirectory(targetDirPath);
-                _logger.LogAdd(targetDirPath, $"Directory created: '{targetDirPath}' (source directory: '{dir.FullName}')");
+                _logger.LogAdd( $"Directory created: '{targetDirPath}' (source directory: '{dir.FullName}')");
             }
         }
 
         return Task.CompletedTask;
     }
 
-    private async Task ProcessFileAsync(FileInfo sourceFile)
+    private async Task ProcessFileAsync(FileInfo sourceFile, string sourcePath, string targetPath, CancellationToken cancellationToken)
     {
         string targetFilePath = sourceFile.FullName.Replace(sourcePath, targetPath);
         FileInfo targetFile = new(targetFilePath);
 
         try
         {
-            if (await ShouldCopyFileAsync(sourceFile, targetFile))
+            if (await ShouldCopyFileAsync(sourceFile, targetFile, cancellationToken))
             {
-                if (!targetFile.Exists) _logger.LogAdd(targetFilePath, $"File {sourceFile.Name} added from '{sourceFile.FullName}' to '{targetFilePath}'");
-                else _logger.LogUpdate(targetFilePath, $"File updated from '{sourceFile.FullName}' to '{targetFilePath}'");
-                await CopyFileAsync(sourceFile.FullName, targetFilePath);
+                if (!targetFile.Exists)
+                {
+                    _logger.LogAdd($"File {sourceFile.Name} added from '{sourceFile.FullName}' to '{targetFilePath}'");
+                }
+                else
+                {
+                    _logger.LogUpdate($"File updated from '{sourceFile.FullName}' to '{targetFilePath}'");
+                }
+
+                await CopyFileAsync(sourceFile.FullName, targetFilePath, cancellationToken);
             }
         }
         catch (Exception ex)
@@ -125,7 +125,7 @@ public class FileSynchronizer : ISynchronizer
         }
     }
 
-    private async Task<bool> ShouldCopyFileAsync(FileInfo sourceFile, FileInfo targetFile)
+    private async Task<bool> ShouldCopyFileAsync(FileInfo sourceFile, FileInfo targetFile, CancellationToken cancellationToken)
     {
         for (int attempt = 0; attempt < MaxRetryAttempts; attempt++)
         {
@@ -134,7 +134,7 @@ public class FileSynchronizer : ISynchronizer
                 if (!targetFile.Exists ||
                     sourceFile.LastWriteTime > targetFile.LastWriteTime ||
                     sourceFile.Length != targetFile.Length ||
-                    !await CompareFilesAsync(sourceFile.FullName, targetFile.FullName))
+                    !await CompareFilesAsync(sourceFile.FullName, targetFile.FullName,cancellationToken))
                 {
                     return true;
                 }
@@ -145,11 +145,16 @@ public class FileSynchronizer : ISynchronizer
                 _logger.Warning($"Attempt {attempt + 1} failed: {ex.Message}. Retrying...");
                 await Task.Delay(RetryDelayMilliseconds);
             }
+            catch (Exception ex)
+            {
+                _logger.Error($"Error occured: {ex.Message}");
+                return false;
+            }
         }
         return false;
     }
 
-    private async Task CopyFileAsync(string source, string target)
+    private async Task CopyFileAsync(string source, string target, CancellationToken cancellationToken)
     {
         for (int attempt = 0; attempt < MaxRetryAttempts; attempt++)
         {
@@ -168,18 +173,16 @@ public class FileSynchronizer : ISynchronizer
         }
     }
 
-    private async Task CleanDirectoryAsync(DirectoryInfo targetDirectory)
+    private async Task CleanDirectory(DirectoryInfo targetDirectory, string sourcePath, string targetPath)
     {
-        // Delete files asynchronously
-        IEnumerable<FileInfo> files = targetDirectory.GetFiles("*", SearchOption.AllDirectories);
-        IEnumerable<Task> fileTasks = files.Select(file => DeleteFileIfNotExistsInSourceAsync(file, sourcePath, targetPath));
-        await Task.WhenAll(fileTasks);
-
-        // Delete directories asynchronously (from inner to outer)
-        IOrderedEnumerable<DirectoryInfo> directories = targetDirectory
+        var files = targetDirectory.GetFiles("*", SearchOption.AllDirectories);
+        foreach (var file in files)
+        {
+            await DeleteFileIfNotExistsInSourceAsync(file, sourcePath, targetPath);
+        }
+        var directories = targetDirectory
             .GetDirectories("*", SearchOption.AllDirectories)
             .OrderByDescending(d => d.FullName.Length);
-
         foreach (var dir in directories)
         {
             try
@@ -187,7 +190,7 @@ public class FileSynchronizer : ISynchronizer
                 string sourceDirPath = dir.FullName.Replace(targetPath, sourcePath);
                 if (!Directory.Exists(sourceDirPath))
                 {
-                    _logger.LogDelete(dir.FullName, $"Directory deleted: '{dir.FullName}' (source directory '{sourceDirPath}' does not exist)");
+                    _logger.LogDelete( $"Directory deleted: '{dir.FullName}' (source directory '{sourceDirPath}' does not exist)");
                     await Task.Run(() => dir.Delete(true));
                 }
             }
@@ -206,7 +209,7 @@ public class FileSynchronizer : ISynchronizer
             if (!File.Exists(sourceFilePath))
             {
                 await Task.Run(() => targetFile.Delete());
-                _logger.LogDelete(targetFile.FullName, $"File deleted: '{targetFile.FullName}' (source file '{sourceFilePath}' does not exist)");
+                _logger.LogDelete( $"File deleted: '{targetFile.FullName}' (source file '{sourceFilePath}' does not exist)");
             }
         }
         catch (Exception ex)

@@ -25,18 +25,11 @@ public class Logger : ILogger, IDisposable
         _isRunning = false;
         _isDisposed = false;
 
-
-        var directoryPath = Path.GetDirectoryName(_logFilePath);
-        if (directoryPath != null && !Directory.Exists(directoryPath))
-        {
-            Directory.CreateDirectory(directoryPath);
-        }
-
-        // Ensure the log file exists
         if (!File.Exists(_logFilePath))
         {
             using (File.Create(_logFilePath)) { }
         }
+        StartLogging();
     }
     public void Log(LogMessage logMessage)
     {
@@ -45,7 +38,6 @@ public class Logger : ILogger, IDisposable
         _logQueue.Add(logMessage);
     }
 
-    // Start logging by initializing the StreamWriter and starting the logging thread
     public void StartLogging()
     {
         if (_isDisposed) throw new ObjectDisposedException(nameof(Logger));
@@ -54,14 +46,13 @@ public class Logger : ILogger, IDisposable
         _loggingThread = new Thread(BackgroundLogProcessing);
         _loggingThread.Start();
     }
-    // Stop logging and close resources
     public void StopLogging()
     {
         if (_isRunning)
         {
             _isRunning = false;
             _logQueue.CompleteAdding();
-            _loggingThread?.Join();
+            _loggingThread.Join();
         }
     }
     // Background thread to process the log queue and write logs
