@@ -3,6 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using CommandLine;
 using Synchronization.Models;
+using Synchronization.Services;
 
 namespace Synchronization
 {
@@ -63,20 +64,6 @@ namespace Synchronization
                 },
                 _ => Task.CompletedTask // Handle parsing errors
             );
-        }
-
-        private static bool ValidateOptions(CommandLineOptions options)
-        {
-            if (string.IsNullOrWhiteSpace(options.SourceDirectory) ||
-                string.IsNullOrWhiteSpace(options.TargetDirectory) ||
-                string.IsNullOrWhiteSpace(options.LogFilePath) ||
-                options.SyncDelay < 1000) // Minimum delay of 1 second
-            {
-                Console.WriteLine("Error: Invalid parameters. Ensure all required values are provided and delay is at least 1000ms.");
-                return false;
-            }
-
-            return true;
         }
     }
 }

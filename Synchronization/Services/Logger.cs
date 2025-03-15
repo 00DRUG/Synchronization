@@ -1,7 +1,7 @@
 ﻿using Synchronization.Interfaces;
 using Synchronization.Models;
 using System.Collections.Concurrent;
-namespace Synchronization;
+namespace Synchronization.Services;
 
 
 
@@ -16,14 +16,15 @@ public class Logger : ILogger, IDisposable
 
     public Logger(string logFilePath = "log.txt")
     {
+        // Ensure the directory exists before starting logging
+        if (string.IsNullOrEmpty(_logFilePath))
+            throw new ArgumentException("Log file path cannot be null or empty");
+
         _logFilePath = logFilePath;
         _logQueue = new BlockingCollection<LogMessage>(new ConcurrentQueue<LogMessage>());
         _isRunning = false;
         _isDisposed = false;
 
-        // Ensure the directory exists before starting logging
-        if (string.IsNullOrEmpty(_logFilePath))
-            throw new ArgumentException("Log file path cannot be null or empty");
 
         var directoryPath = Path.GetDirectoryName(_logFilePath);
         if (directoryPath != null && !Directory.Exists(directoryPath))
@@ -67,9 +68,8 @@ public class Logger : ILogger, IDisposable
     private void BackgroundLogProcessing()
     {
         using (var _streamWriter = new StreamWriter(_logFilePath, append: true))
-            foreach ( var logMessage in _logQueue.GetConsumingEnumerable())
+            foreach (var logMessage in _logQueue.GetConsumingEnumerable())
             {
-
                 _streamWriter.WriteLine(logMessage);
                 _streamWriter.Flush();
             }
@@ -82,7 +82,7 @@ public class Logger : ILogger, IDisposable
 
         _isDisposed = true;
         StopLogging();
-        _streamWriter?.Dispose();
+        _streamWriter.Dispose();
         _logQueue.Dispose();
     }
 }

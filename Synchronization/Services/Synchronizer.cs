@@ -1,19 +1,16 @@
 ﻿using Synchronization.Enums;
 using Synchronization.Interfaces;
 using Synchronization.Models;
-using System.Security.Cryptography;
-namespace Synchronization;
+using Synchronization.Utils;
+namespace Synchronization.Services;
 
 
-public class FileSynchronizer: ISynchronizer 
+public class FileSynchronizer : ISynchronizer
 {
-    private readonly Logger _logger;
+    private readonly ILogger _logger;
     private const int MaxRetryAttempts = 10;
     private const int RetryDelayMilliseconds = 1000;
-    private readonly InputParameters _inputPrameters;
-
-
-    private readonly ComparisonMethod _comparisonMethod = comparisonMethod;
+    private InputParameters _inputPrameters;
 
     public FileSynchronizer(ILogger logger)
     {
@@ -26,10 +23,11 @@ public class FileSynchronizer: ISynchronizer
         _logger.LogSyncStart("Starting synchronization.");
         try
         {
-            while (!_cancellationToken.Token.IsCancellationRequested)
+            var context = new FilesContext(input.SourceDirectory, input.TargetDirectory);
+            while (!cancellationToken.Token.IsCancellationRequested)
             {
                 await SyncDirectoriesAsync();
-                await Task.Delay(syncDelay, _cancellationToken.Token);
+                await Task.Delay(input.SyncDelay, cancellationToken.Token);
             }
         }
         catch (OperationCanceledException)
@@ -216,87 +214,14 @@ public class FileSynchronizer: ISynchronizer
             _logger.Error($"Error deleting file '{targetFile.FullName}': {ex.Message}");
         }
     }
-    private async Task<bool> CompareFilesAsync(string filePath1, string filePath2)
-    {
-        return _comparisonMethod switch
+    private async Task<bool> CompareFilesAsync(string filePath1, string filePath2, CancellationToken cancellationToken)
+        => _inputParameters.ComparisonMethod switch
         {
-            ComparisonMethod.MD5 => await CompareMD5Async(filePath1, filePath2),
-            ComparisonMethod.SHA256 => await CompareSHA256Async(filePath1, filePath2),
+            ComparisonMethod.MD5 => await Comparators.CompareMD5Async(filePath1, filePath2, cancellationToken),
+            ComparisonMethod.SHA256 => await Comparators.CompareSHA256Async(filePath1, filePath2, cancellationToken),
             ComparisonMethod.None => true,
-            _ => await CompareFilesBinaryAsync(filePath1, filePath2)
+            ComparisonMethod.Binary => await Comparators.CompareFilesBinaryAsync(filePath1, filePath2, cancellationToken),
+            _ => throw new ArgumentException()
         };
-    }
 
-    public static async Task<bool> CompareMD5Async(string filePath1, string filePath2)
-    {
-        using MD5 md5 = MD5.Create();
-        using FileStream stream1 = new(filePath1, FileMode.Open, FileAccess.Read);
-        using FileStream stream2 = new(filePath2, FileMode.Open, FileAccess.Read);
-
-        byte[] hash1 = await md5.ComputeHashAsync(stream1);
-        byte[] hash2 = await md5.ComputeHashAsync(stream2);
-        return hash1.SequenceEqual(hash2);
-    }
-
-    public static async Task<bool> CompareSHA256Async(string filePath1, string filePath2)
-    {
-        using SHA256 sha256 = SHA256.Create();
-        using FileStream stream1 = new(filePath1, FileMode.Open, FileAccess.Read);
-        using FileStream stream2 = new(filePath2, FileMode.Open, FileAccess.Read);
-
-        byte[] hash1 = await sha256.ComputeHashAsync(stream1);
-        byte[] hash2 = await sha256.ComputeHashAsync(stream2);
-        return hash1.SequenceEqual(hash2);
-    }
-    public async Task<bool> CompareFilesBinaryAsync(string filePath1, string filePath2)
-    {
-        const int bufferSize = 1024 * 1024; // 1 mb buffer size for efficient reading
-
-        try
-        {
-            using (FileStream stream1 = new FileStream(filePath1, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous))
-            using (FileStream stream2 = new FileStream(filePath2, FileMode.Open, FileAccess.Read, FileShare.Read, bufferSize, FileOptions.Asynchronous))
-            {
-                if (stream1.Length != stream2.Length)
-                {
-                    return false; // Files are different sizes
-                }
-
-                byte[] buffer1 = new byte[bufferSize];
-                byte[] buffer2 = new byte[bufferSize];
-
-                while (true)
-                {
-                    int bytesRead1 = await stream1.ReadAsync(buffer1, 0, bufferSize);
-                    int bytesRead2 = await stream2.ReadAsync(buffer2, 0, bufferSize);
-
-                    if (bytesRead1 != bytesRead2)
-                    {
-                        return false; // Files have different content lengths
-                    }
-
-                    if (bytesRead1 == 0)
-                    {
-                        return true; // End of both files reached, and all bytes matched
-                    }
-
-                    if (!buffer1.SequenceEqual(buffer2))
-                    {
-                        return false; // Bytes do not match
-                    }
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.Error($"Error comparing files '{filePath1}' and '{filePath2}': {ex.Message}");
-            return false;
-        }
-    }
-
-    public void Stop()
-    {
-        _logger.Info("Stopping synchronization.");
-        _cancellationToken.Cancel();
-    }
 }
