@@ -1,12 +1,7 @@
-﻿using System.Security.Cryptography;
+﻿using Synchronization.Enums;
+using System.Security.Cryptography;
 namespace Synchronization;
-    public enum ComparisonMethod
-    {
-        MD5,
-        SHA256,
-        None,
-        Binary
-    }
+
 
     public class FileSynchronizer(string sourcePath, string targetPath, Logger logger, ComparisonMethod comparisonMethod, CancellationTokenSource cancellationToken, int syncDelay = 10000)
     {

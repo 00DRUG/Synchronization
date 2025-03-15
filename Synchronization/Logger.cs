@@ -1,27 +1,10 @@
 ﻿using System.Collections.Concurrent;
-
+using 
 namespace Synchronization;
-    public enum LogLevel
-    {
-        Info,
-        Warning,
-        Error,
-        Debug
-    }
-    public enum OperationType
-    {
-        Add,
-        Update,
-        Delete,
-        SyncStart,
-        SyncEnd,
-        Info,
-        Warning,
-        Error,
-        Debug
-    }
 
-    public class Logger : IDisposable
+
+
+    public class Logger : ILogger, IDisposable
     {
         private readonly string _logFilePath;
         private readonly BlockingCollection<LogMessage> _logQueue;
@@ -133,19 +116,4 @@ namespace Synchronization;
         public void Info(string message) => Log(new LogMessage(message, LogLevel.Info));
         public void Warning(string message) => Log(new LogMessage(message, LogLevel.Warning));
         public void Error(string message) => Log(new LogMessage(message, LogLevel.Error));
-    }
-    public class LogMessage
-    {
-        public DateTime Timestamp { get; }
-        public string Message { get; }
-        public LogLevel Level { get; }
-        public OperationType Operation { get; }
- 
-        public LogMessage(string message, LogLevel level,OperationType operation = OperationType.Info)
-        {
-            Timestamp = DateTime.Now;
-            Message = message;
-            Level = level;
-            Operation = operation;
-        }
     }

@@ -2,35 +2,18 @@
 using System.Threading;
 using System.Threading.Tasks;
 using CommandLine;
+using Synchronization.Models;
 
 namespace Synchronization
 {
-    public class CommandLineOptions
-    {
-        [Option('s', "source", Required = true, HelpText = "Source directory path.")]
-        public string SourceDirectory { get; set; } = string.Empty;
-
-        [Option('t', "target", Required = true, HelpText = "Target directory path.")]
-        public string TargetDirectory { get; set; } = string.Empty;
-
-        [Option('l', "log", Required = true, HelpText = "Path to the log file.")]
-        public string LogFilePath { get; set; } = string.Empty;
-
-        [Option('m', "method", Default = "Binary", HelpText = "Comparison method (MD5, SHA256, Binary).")]
-        public string ComparisonMethod { get; set; }= string.Empty;
-
-        [Option('d', "delay", Default = 10000, HelpText = "Synchronization delay in milliseconds.")]
-        public int SyncDelay { get; set; }
-    }
-
     public class CommandLine
     {
-        private Logger? _logger;
-        private FileSynchronizer? _fileSynchronizer;
+        private Logger _logger;
+        private FileSynchronizer _fileSynchronizer;
 
         public async Task RunAsync(string[] args)
         {
-            var parserResult = Parser.Default.ParseArguments<CommandLineOptions>(args);
+            var parserResult = Parser.Default.ParseArguments<InputParameters>(args);
 
             await parserResult.MapResult(
                 async options =>
