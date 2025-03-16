@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Synchronization.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a7b4320ee507926cbec79bd9771d0faf545f5ef5")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3eadd621ec1a615c62101ee1d871e852fdcbaf48")]
 [assembly: System.Reflection.AssemblyProductAttribute("Synchronization.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Synchronization.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

@@ -50,7 +50,7 @@ public class Logger : ILogger, IDisposable
         {
             _isRunning = false;
             _logQueue.CompleteAdding();
-            _loggingThread.Join();
+            _loggingThread?.Join();
         }
     }
     // Background thread to process the log queue and write logs

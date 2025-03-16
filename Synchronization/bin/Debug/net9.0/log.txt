@@ -13,3 +13,11 @@
 [2025-03-15 19:23:37] [Info] [Info] Synchronization operation was cancelled.
 [2025-03-15 19:23:37] [Info] [SyncEnd] Synchronization completed.
 [2025-03-15 19:23:37] [Info] [SyncEnd] Process stopped
+[2025-03-15 19:28:24] [Info] [SyncStart] Starting synchronization.
+[2025-03-15 19:28:34] [Info] [Add] Directory created: 'C:\Users\gurie\Source\Repos\Synchronization\Synchronization\bin\Debug\net9.0\target\k\dccs444' (source directory: 'C:\Users\gurie\Source\Repos\Synchronization\Synchronization\bin\Debug\net9.0\source\k\dccs444')
+[2025-03-15 19:28:34] [Info] [Add] Directory created: 'C:\Users\gurie\Source\Repos\Synchronization\Synchronization\bin\Debug\net9.0\target\k\54444' (source directory: 'C:\Users\gurie\Source\Repos\Synchronization\Synchronization\bin\Debug\net9.0\source\k\54444')
+[2025-03-15 19:28:34] [Info] [Add] File ddd.txt added from 'C:\Users\gurie\Source\Repos\Synchronization\Synchronization\bin\Debug\net9.0\source\ddd.txt' to 'C:\Users\gurie\Source\Repos\Synchronization\Synchronization\bin\Debug\net9.0\target\ddd.txt'
+[2025-03-15 19:28:34] [Info] [Add] File ddss.rar added from 'C:\Users\gurie\Source\Repos\Synchronization\Synchronization\bin\Debug\net9.0\source\k\54444\ddss.rar' to 'C:\Users\gurie\Source\Repos\Synchronization\Synchronization\bin\Debug\net9.0\target\k\54444\ddss.rar'
+[2025-03-15 19:28:46] [Info] [Info] Synchronization operation was cancelled.
+[2025-03-15 19:28:46] [Info] [SyncEnd] Synchronization completed.
+[2025-03-15 19:28:46] [Info] [SyncEnd] Process stopped

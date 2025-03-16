@@ -58,6 +58,10 @@
               "target": "Package",
               "version": "[17.12.0, )"
             },
+            "Moq": {
+              "target": "Package",
+              "version": "[4.20.72, )"
+            },
             "coverlet.collector": {
               "target": "Package",
               "version": "[6.0.2, )"
@@ -140,6 +144,10 @@
             "CommandLineParser": {
               "target": "Package",
               "version": "[2.9.1, )"
+            },
+            "Moq": {
+              "target": "Package",
+              "version": "[4.18.4, )"
             }
           },
           "imports": [
